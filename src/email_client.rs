@@ -23,10 +23,11 @@ impl EmailClient {
     pub fn new(
         base_url: String,
         sender: SubscriberEmail,
-        authorization_token: Secret<String>
+        authorization_token: Secret<String>,
+        timeout: std::time::Duration
     ) -> Self {
         let http_client = Client::builder()
-            .timeout(std::time::Duration::from_secs(10))
+            .timeout(timeout)
             .build()
             .unwrap();
         Self {
@@ -80,13 +81,33 @@ mod tests {
     use wiremock::{Mock, MockServer, ResponseTemplate, Request};
     use claim::{assert_err, assert_ok};
 
+    fn subject() -> String {
+        Sentence(1..2).fake()
+    }
+
+    fn content() -> String {
+        Paragraph(1..10).fake()
+    }
+
+    fn email() -> SubscriberEmail {
+        SubscriberEmail::parse(SafeEmail().fake()).unwrap()
+    }
+
+    fn email_client(base_url: String) -> EmailClient {
+        EmailClient::new(
+            base_url,
+            email(),
+            Secret::new(Faker.fake()),
+            std::time::Duration::from_millis(200)
+        )
+    }
+
     struct  SendEmailBodyMatcher;
     impl wiremock::Match for SendEmailBodyMatcher {
         fn matches(&self, request: &Request) -> bool {
             let result: Result<serde_json::Value, _> = serde_json::from_slice(&request.body);
 
             if let Ok(body) = result {
-                dbg!(&body);
                 body.get("From").is_some()
                     && body.get("To").is_some()
                     && body.get("Subject").is_some()
