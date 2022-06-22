@@ -45,7 +45,6 @@ mod tests {
         assert_err!(SubscriberEmail::parse(email));
     }
 
-
     #[derive(Debug, Clone)]
     struct ValidEmailFixture(pub String);
 
