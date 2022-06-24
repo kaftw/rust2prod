@@ -1,5 +1,6 @@
 use wiremock::{Mock, ResponseTemplate};
 use wiremock::matchers::{method, path};
+use rust2prod::routes::generate_subscription_token;
 use crate::helpers::spawn_app;
 
 #[tokio::test]
@@ -72,4 +73,35 @@ async fn clicking_on_the_confirmation_link_confirms_a_subscriber() {
     assert_eq!(saved.email, "ursula_le_guin@gmail.com");
     assert_eq!(saved.name, "le guin");
     assert_eq!(saved.status.unwrap().as_str(), "confirmed");
+}
+
+#[tokio::test]
+async fn confirm_fails_if_there_is_a_fatal_database_error() {
+    // arrange
+    let app = spawn_app().await;
+    let token = generate_subscription_token();
+
+    sqlx::query!("ALTER TABLE subscription_tokens DROP COLUMN subscriber_id;")
+        .execute(&app.db_pool)
+        .await
+        .unwrap();
+
+    // act
+    let response = app.confirm(token).await;
+
+    // assert
+    assert_eq!(response.status().as_u16(), 500);
+}
+
+#[tokio::test]
+async fn confirm_fails_if_token_does_not_exist() {
+    // arrange
+    let app = spawn_app().await;
+    let token = generate_subscription_token();
+
+    // act
+    let response = app.confirm(token).await;
+
+    // assert
+    assert_eq!(response.status().as_u16(), 401);
 }

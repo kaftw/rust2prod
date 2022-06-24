@@ -42,6 +42,18 @@ impl TestApp {
             .expect("Failted to execute request.")
     }
 
+    pub async fn confirm(&self, subscription_token: String) -> reqwest::Response {
+        reqwest::Client::new()
+            .get(
+                &format!("{}/subscriptions/confirm?subscription_token={}",
+                         &self.address,
+                         subscription_token
+                ))
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
+
     pub fn get_confirmation_links(
         &self,
         email_request: &wiremock::Request

@@ -28,7 +28,7 @@ impl TryFrom<FormData> for NewSubscriber {
     }
 }
 
-fn generate_subscription_token() -> String {
+pub fn generate_subscription_token() -> String {
     let mut rng = thread_rng();
     std::iter::repeat_with(|| rng.sample(Alphanumeric))
         .map(char::from)
@@ -149,7 +149,7 @@ impl std::fmt::Debug for StoreTokenError {
     }
 }
 
-fn error_chain_fmt(
+pub fn error_chain_fmt(
     e: &impl std::error::Error,
     f: &mut Formatter<'_>
 ) -> std::fmt::Result {
