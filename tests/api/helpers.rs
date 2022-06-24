@@ -60,10 +60,10 @@ impl TestApp {
     ) -> ConfirmationLinks {
         let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
 
-        let get_link = | s: &str | {
+        let get_link = |s: &str| {
             let links: Vec<_> = linkify::LinkFinder::new()
                 .links(s)
-                .filter(| l | *l.kind() == linkify::LinkKind::Url)
+                .filter(|l| *l.kind() == linkify::LinkKind::Url)
                 .collect();
 
             assert_eq!(links.len(), 1);
@@ -84,6 +84,15 @@ impl TestApp {
             html,
             plain_text
         }
+    }
+
+    pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+        reqwest::Client::new()
+            .post(&format!("{}/newsletters", &self.address))
+            .json(&body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
     }
 }
 
