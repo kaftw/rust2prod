@@ -180,7 +180,7 @@ async fn send_confirmation_email(email_client: &Data<EmailClient>,
                          confirmation_link);
     email_client
         .send_email(
-            new_subscriber.email,
+            &new_subscriber.email,
             "Welcome!",
             &html_body,
             &plain_body

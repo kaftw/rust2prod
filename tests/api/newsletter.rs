@@ -34,7 +34,14 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
 async fn newsletters_are_delivered_to_confirmed_subscribers() {
     // arrange
     let app = spawn_app().await;
-    create_unconfirmed_subscriber(&app).await;
+    let confirmation_links = create_unconfirmed_subscriber(&app).await;
+    let confirmation_response = reqwest::Client::new()
+        .get(confirmation_links.html)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(confirmation_response.status().as_u16(), 200);
+
     Mock::given(path("/email"))
         .and(method("POST"))
         .respond_with(ResponseTemplate::new(200))
