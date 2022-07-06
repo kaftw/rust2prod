@@ -1,5 +1,6 @@
 application:
   port: 8000
+  hmac_secret: "<INSERT SECRET HERE>"
 database:
   host: "localhost"
   port: 5432
