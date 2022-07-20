@@ -2,9 +2,9 @@ use std::fmt::Formatter;
 use crate::authentication::{validate_credentials, AuthError, Credentials};
 use crate::routes::error_chain_fmt;
 use actix_web::{HttpResponse, error::InternalError, http::header::LOCATION, web};
+use actix_web_flash_messages::FlashMessage;
 use secrecy::Secret;
 use sqlx::PgPool;
-use actix_web::cookie::Cookie;
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
@@ -40,9 +40,9 @@ pub async fn login(
                 AuthError::UnexpectedError(_) => LoginError::UnexpectedError(e.into())
             };
 
+            FlashMessage::error(e.to_string()).send();
             let response = HttpResponse::SeeOther()
-                .insert_header((LOCATION,"/login"))
-                .cookie(Cookie::new("_flash", e.to_string()))
+                .insert_header((LOCATION, "/login"))                
                 .finish();
             Err(InternalError::from_response(e, response))
         }
