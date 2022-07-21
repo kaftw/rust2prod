@@ -1,4 +1,4 @@
-use actix_session::Session;
+use crate::session_state::TypedSession;
 use actix_web::{HttpResponse, web, http::header::ContentType};
 use anyhow::Context;
 use sqlx::PgPool;
@@ -11,13 +11,12 @@ fn e500<T>(e: T) -> actix_web::Error
 }
 
 pub async fn admin_dashboard(
-    session: Session,
+    session: TypedSession,
     pool: web::Data<PgPool>
 ) -> Result<HttpResponse, actix_web::Error> {
     let username = if let Some(user_id) = session
-        .get::<Uuid>("user_id")
-        .map_err(e500)?
-        {
+        .get_user_id()
+        .map_err(e500)? {
             get_username(user_id, &pool).await.map_err(e500)?
         } else {
             todo!()
