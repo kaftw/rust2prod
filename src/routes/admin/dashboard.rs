@@ -1,14 +1,8 @@
-use crate::session_state::TypedSession;
-use actix_web::{HttpResponse, web, http::header::{ContentType, LOCATION}};
+use crate::{session_state::TypedSession, utils::{e500, see_other}};
+use actix_web::{HttpResponse, web, http::header::ContentType};
 use anyhow::Context;
 use sqlx::PgPool;
 use uuid::Uuid;
-
-fn e500<T>(e: T) -> actix_web::Error
-    where T: std::fmt::Debug + std::fmt::Display + 'static
-{
-    actix_web::error::ErrorInternalServerError(e)
-}
 
 pub async fn admin_dashboard(
     session: TypedSession,
@@ -19,7 +13,7 @@ pub async fn admin_dashboard(
         .map_err(e500)? {
             get_username(user_id, &pool).await.map_err(e500)?
         } else {
-            return Ok(HttpResponse::SeeOther().insert_header((LOCATION, "/login")).finish());
+            return Ok(see_other("/login"));
         };
         Ok(
             HttpResponse::Ok()
@@ -33,6 +27,15 @@ pub async fn admin_dashboard(
                     </head>
                     <body>
                         <p>Welcome {username}!</p>
+                        <p>Available actions:</p>
+                        <ol>
+                            <li><a href="/admin/password">Change password</a></li>
+                            <li>
+                                <form name="logoutForm" action="/admin/logout" method="post">
+                                    <input type="submit" value="Logout">
+                                </form>
+                            </li>
+                        </ol>
                     </body>
                     </html>
                     "#
@@ -41,7 +44,7 @@ pub async fn admin_dashboard(
 }
 
 #[tracing::instrument(name = "Get username", skip(pool))]
-async fn get_username(
+pub async fn get_username(
     user_id: Uuid,
     pool: &PgPool
 ) -> Result<String, anyhow::Error> {
