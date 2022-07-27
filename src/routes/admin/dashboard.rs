@@ -1,20 +1,15 @@
-use crate::{session_state::TypedSession, utils::{e500, see_other}};
+use crate::{utils::e500, authentication::UserId};
 use actix_web::{HttpResponse, web, http::header::ContentType};
 use anyhow::Context;
 use sqlx::PgPool;
 use uuid::Uuid;
 
 pub async fn admin_dashboard(
-    session: TypedSession,
-    pool: web::Data<PgPool>
+    pool: web::Data<PgPool>,
+    user_id: web::ReqData<UserId>
 ) -> Result<HttpResponse, actix_web::Error> {
-    let username = if let Some(user_id) = session
-        .get_user_id()
-        .map_err(e500)? {
-            get_username(user_id, &pool).await.map_err(e500)?
-        } else {
-            return Ok(see_other("/login"));
-        };
+    let user_id = user_id.into_inner();
+    let username = get_username(*user_id, &pool).await.map_err(e500)?;        
         Ok(
             HttpResponse::Ok()
                 .content_type(ContentType::html())
@@ -30,6 +25,7 @@ pub async fn admin_dashboard(
                         <p>Available actions:</p>
                         <ol>
                             <li><a href="/admin/password">Change password</a></li>
+                            <li><a href="/admin/newsletters">Send newsletter</a></li>
                             <li>
                                 <form name="logoutForm" action="/admin/logout" method="post">
                                     <input type="submit" value="Logout">
