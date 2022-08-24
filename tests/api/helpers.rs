@@ -1,9 +1,11 @@
+use rust2prod::configuration::{get_configuration, DatabaseSettings};
+use rust2prod::email_client::EmailClient;
+use rust2prod::issue_delivery_worker::{try_execute_task, ExecutionOutcome};
+use rust2prod::startup::{get_connection_pool, Application};
+use rust2prod::telemetry::{get_subscriber, init_subscriber};
 use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version};
 use argon2::password_hash::SaltString;
 use once_cell::sync::Lazy;
-use rust2prod::configuration::{get_configuration, DatabaseSettings};
-use rust2prod::startup::{get_connection_pool, Application};
-use rust2prod::telemetry::{get_subscriber, init_subscriber};
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use uuid::Uuid;
 use wiremock::MockServer;
@@ -63,6 +65,7 @@ pub struct TestApp {
     pub email_server: MockServer,
     pub port: u16,
     pub api_client: reqwest::Client,
+    pub email_client: EmailClient,
     pub(crate) test_user: TestUser
 }
 
@@ -72,6 +75,17 @@ pub struct ConfirmationLinks {
 }
 
 impl TestApp {
+    pub async fn dispatch_all_pending_emails(&self) {
+        loop {
+            if let ExecutionOutcome::EmptyQueue = try_execute_task(&self.db_pool, &self.email_client)
+                .await
+                .unwrap() 
+            {
+                break;
+            }
+        }
+    }
+
     pub async fn post_subscriptions(&self, body: String) -> reqwest::Response {
         self.api_client
             .post(&format!("{}/subscriptions", &self.address))
@@ -126,7 +140,7 @@ impl TestApp {
         }
     }
 
-    pub async fn post_newsletters<Body>(&self, body: &Body) -> reqwest::Response
+    pub async fn post_newsletter<Body>(&self, body: &Body) -> reqwest::Response
         where Body: serde::Serialize
     {
         self.api_client
@@ -211,6 +225,17 @@ impl TestApp {
             .await
             .expect("Failed to execute request.")
     }
+
+    pub async fn get_newsletters_html(&self) -> String {
+        self.api_client
+            .get(&format!("{}/admin/newsletters", self.address))
+            .send()
+            .await
+            .expect("Failed to execute request.")
+            .text()
+            .await
+            .unwrap()
+    }
 }
 
 pub async fn spawn_app() -> TestApp {
@@ -247,6 +272,7 @@ pub async fn spawn_app() -> TestApp {
         email_server,
         port,
         api_client,
+        email_client: configuration.email_client.client(),
         test_user: TestUser::generate()
     };
 

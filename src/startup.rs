@@ -1,7 +1,7 @@
 use crate::authentication::reject_anonymous_users;
 use crate::configuration::{DatabaseSettings, Settings};
 use crate::email_client::EmailClient;
-use crate::routes::{confirm, health_check, home, login, login_form, log_out, subscribe, admin_dashboard, change_password, change_password_form, publish_newsletter};
+use crate::routes::{confirm, health_check, home, login, login_form, log_out, subscribe, admin_dashboard, change_password, change_password_form, publish_newsletter, get_newsletter_form};
 use actix_session::{SessionMiddleware, storage::RedisSessionStore};
 use actix_web::dev::Server;
 use actix_web::web::Data;
@@ -22,18 +22,8 @@ pub struct Application {
 impl Application {
     pub async fn build(configuration: Settings) -> Result<Self, anyhow::Error> {
         let connection_pool = get_connection_pool(&configuration.database);
-
-        let sender_email = configuration
-            .email_client
-            .sender()
-            .expect("Invalid sender email address.");
-        let timeout = configuration.email_client.timeout();
-        let email_client = EmailClient::new(
-            configuration.email_client.base_url,
-            sender_email,
-            configuration.email_client.authorization_token,
-            timeout,
-        );
+        
+        let email_client = configuration.email_client.client();
 
         let address = format!(
             "{}:{}",
@@ -98,6 +88,7 @@ pub async fn run(
                 .route("/password", web::post().to(change_password))
                 .route("/logout", web::post().to(log_out))
                 .route("/newsletters", web::post().to(publish_newsletter))
+                .route("/newsletters", web::get().to(get_newsletter_form))
             )            
             // register the connection as part of the application state
             .app_data(db_pool.clone())
